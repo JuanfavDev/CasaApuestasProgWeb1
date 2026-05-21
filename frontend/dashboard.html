@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard - Apuestas IA 2026</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body class="dashboard-body">
+    <div class="background-animation"></div>
+    
+    <nav class="navbar glass-panel">
+        <div class="nav-brand">🏆 Mundial 2026 Apuestas</div>
+        <div class="nav-user">
+            <span id="user-greeting">Hola, Usuario</span>
+            <button id="logout-btn" class="btn btn-sm outline-btn">Salir</button>
+        </div>
+    </nav>
+
+    <main class="dashboard-container">
+        <!-- Partidos -->
+        <section class="matches-section">
+            <h2 class="section-title">Próximos Partidos</h2>
+            <div id="matches-list" class="grid-container">
+                <!-- Los partidos se cargarán dinámicamente aquí -->
+                <div class="loader">Cargando partidos...</div>
+            </div>
+        </section>
+
+        <!-- Sidebar (Mis Apuestas) -->
+        <aside class="bets-section glass-panel">
+            <h2 class="section-title">Mis Apuestas</h2>
+            <div id="my-bets-list" class="bets-list">
+                <!-- Apuestas del usuario aquí -->
+            </div>
+        </aside>
+    </main>
+
+    <!-- Modal de Predicción IA -->
+    <div id="ai-modal" class="modal hidden">
+        <div class="modal-content glass-panel">
+            <span class="close-btn" id="close-modal">&times;</span>
+            <h2>Predicción de la IA 🤖</h2>
+            <p id="ai-match-teams" class="match-highlight">Cargando...</p>
+            <div id="ai-result-box" class="ai-result-box hidden">
+                <div class="ai-score">
+                    <span id="ai-score-a">0</span> - <span id="ai-score-b">0</span>
+                </div>
+                <p id="ai-reasoning" class="ai-reasoning"></p>
+            </div>
+            <div id="ai-loader" class="loader">Consultando a Gemini...</div>
+        </div>
+    </div>
+
+    <script src="js/api.js"></script>
+    <script src="js/app.js"></script>
+</body>
+</html>

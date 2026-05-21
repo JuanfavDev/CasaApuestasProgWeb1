@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mundial 2026 - Apuestas IA</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <div class="background-animation"></div>
+    <div class="container auth-container">
+        <header class="header-auth">
+            <h1>🏆 Copa Mundial 2026</h1>
+            <p>Predicciones impulsadas por IA</p>
+        </header>
+
+        <div class="glass-panel form-container">
+            <div class="tabs">
+                <button class="tab-btn active" id="tab-login">Iniciar Sesión</button>
+                <button class="tab-btn" id="tab-register">Registrarse</button>
+            </div>
+
+            <!-- Login Form -->
+            <form id="login-form" class="auth-form active">
+                <div class="input-group">
+                    <label for="login-username">Usuario</label>
+                    <input type="text" id="login-username" required placeholder="Ingresa tu usuario">
+                </div>
+                <div class="input-group">
+                    <label for="login-password">Contraseña</label>
+                    <input type="password" id="login-password" required placeholder="••••••••">
+                </div>
+                <button type="submit" class="btn primary-btn">Ingresar</button>
+                <p id="login-msg" class="form-msg"></p>
+            </form>
+
+            <!-- Register Form -->
+            <form id="register-form" class="auth-form">
+                <div class="input-group">
+                    <label for="reg-username">Nuevo Usuario</label>
+                    <input type="text" id="reg-username" required placeholder="Elige un usuario">
+                </div>
+                <div class="input-group">
+                    <label for="reg-password">Contraseña</label>
+                    <input type="password" id="reg-password" required placeholder="Crea una contraseña">
+                </div>
+                <button type="submit" class="btn secondary-btn">Crear Cuenta</button>
+                <p id="register-msg" class="form-msg"></p>
+            </form>
+        </div>
+    </div>
+    
+    <script src="js/api.js"></script>
+    <script src="js/app.js"></script>
+</body>
+</html>
