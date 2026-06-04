@@ -386,3 +386,344 @@ body {
     color: var(--text-muted);
     padding: 2rem;
 }
+
+/* ==========================================================================
+   BetOracle AI - Estilos Premium
+   ========================================================================== */
+
+.match-odds {
+    display: flex;
+    justify-content: space-between;
+    gap: 0.5rem;
+    margin: 5px 0 10px 0;
+}
+
+.odd-badge {
+    flex: 1;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    padding: 6px;
+    border-radius: 8px;
+    font-size: 0.8rem;
+    text-align: center;
+    color: var(--text-muted);
+    transition: all 0.3s ease;
+}
+
+.odd-badge b {
+    color: var(--text-main);
+    margin-left: 2px;
+}
+
+.match-card:hover .odd-badge {
+    background: rgba(59, 130, 246, 0.1);
+    border-color: rgba(59, 130, 246, 0.2);
+}
+
+/* Modal Sizing & Glassmorphism */
+.modal-content.modal-lg {
+    max-width: 650px;
+    text-align: left;
+    max-height: 90vh;
+    overflow-y: auto;
+    border: 1px solid rgba(59, 130, 246, 0.25);
+    box-shadow: 0 0 35px rgba(59, 130, 246, 0.15);
+}
+
+.modal-header-ai {
+    border-bottom: 1px solid var(--glass-border);
+    padding-bottom: 1rem;
+    margin-bottom: 1.5rem;
+    position: relative;
+}
+
+.oracle-tag {
+    font-size: 0.7rem;
+    letter-spacing: 1.5px;
+    background: linear-gradient(135deg, #3b82f6, #10b981);
+    color: white;
+    padding: 3px 8px;
+    border-radius: 4px;
+    font-weight: 800;
+    position: absolute;
+    top: -10px;
+    right: 0;
+}
+
+.ai-score-block {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: rgba(15, 23, 42, 0.5);
+    border-radius: 12px;
+    padding: 1rem 1.5rem;
+    margin-bottom: 1.5rem;
+    border: 1px solid var(--glass-border);
+}
+
+.score-label {
+    display: block;
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-bottom: 5px;
+}
+
+.ai-score {
+    margin: 0 !important;
+    font-size: 2.8rem;
+    font-weight: 800;
+    background: linear-gradient(to right, #60a5fa, #34d399);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    line-height: 1;
+}
+
+.volatility-pill {
+    padding: 6px 16px;
+    border-radius: 20px;
+    font-weight: 700;
+    font-size: 0.85rem;
+    text-align: center;
+    display: inline-block;
+    letter-spacing: 0.5px;
+}
+
+.vol-low {
+    background: rgba(16, 185, 129, 0.15);
+    color: #34d399;
+    border: 1px solid rgba(16, 185, 129, 0.3);
+}
+
+.vol-medium {
+    background: rgba(245, 158, 11, 0.15);
+    color: #fbbf24;
+    border: 1px solid rgba(245, 158, 11, 0.3);
+}
+
+.vol-high {
+    background: rgba(239, 68, 68, 0.15);
+    color: #f87171;
+    border: 1px solid rgba(239, 68, 68, 0.3);
+    animation: pulseGlow 2s infinite ease-in-out;
+}
+
+@keyframes pulseGlow {
+    0%, 100% { box-shadow: 0 0 5px rgba(239, 68, 68, 0.2); }
+    50% { box-shadow: 0 0 15px rgba(239, 68, 68, 0.5); }
+}
+
+/* Probabilities Bar */
+.anal-title {
+    font-size: 1rem;
+    font-weight: 700;
+    color: var(--text-main);
+    margin-bottom: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    border-left: 3px solid var(--primary-color);
+    padding-left: 8px;
+}
+
+.ai-prob-container {
+    margin-bottom: 1.5rem;
+}
+
+.prob-bar-wrapper {
+    display: flex;
+    height: 24px;
+    border-radius: 12px;
+    overflow: hidden;
+    background: rgba(15, 23, 42, 0.8);
+    border: 1px solid var(--glass-border);
+    margin-bottom: 8px;
+}
+
+.prob-bar-segment {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: white;
+    transition: width 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+    text-shadow: 0 1px 2px rgba(0,0,0,0.6);
+    overflow: hidden;
+    white-space: nowrap;
+}
+
+.prob-local {
+    background: linear-gradient(90deg, #1d4ed8, #3b82f6);
+}
+
+.prob-draw {
+    background: linear-gradient(90deg, #475569, #64748b);
+}
+
+.prob-away {
+    background: linear-gradient(90deg, #047857, #10b981);
+}
+
+.prob-legends {
+    display: flex;
+    justify-content: center;
+    gap: 1.5rem;
+    font-size: 0.8rem;
+    color: var(--text-muted);
+}
+
+.legend-dot {
+    display: inline-block;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    margin-right: 4px;
+}
+
+.local-dot { background-color: #3b82f6; }
+.draw-dot { background-color: #64748b; }
+.away-dot { background-color: #10b981; }
+
+/* Multivariable Analysis Grid */
+.multivariable-analysis {
+    margin-bottom: 1.5rem;
+}
+
+.analysis-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.8rem;
+}
+
+@media (max-width: 580px) {
+    .analysis-grid {
+        grid-template-columns: 1fr;
+    }
+    .text-full-width {
+        grid-column: span 1 !important;
+    }
+}
+
+.analysis-item {
+    background: rgba(15, 23, 42, 0.3);
+    border: 1px solid var(--glass-border);
+    border-radius: 10px;
+    padding: 12px 14px;
+    transition: all 0.3s ease;
+}
+
+.analysis-item:hover {
+    background: rgba(15, 23, 42, 0.5);
+    border-color: rgba(255, 255, 255, 0.15);
+}
+
+.text-full-width {
+    grid-column: span 2;
+}
+
+.item-header-factor {
+    font-size: 0.85rem;
+    font-weight: 700;
+    color: #e2e8f0;
+    margin-bottom: 6px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.factor-icon {
+    font-size: 1rem;
+}
+
+.factor-text {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    line-height: 1.45;
+}
+
+/* Insights & Suggestions */
+.prediction-insights {
+    display: flex;
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+}
+
+@media (max-width: 580px) {
+    .prediction-insights {
+        flex-direction: column;
+    }
+}
+
+.insight-badge {
+    flex: 1;
+    border-radius: 12px;
+    padding: 12px 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+}
+
+.value-badge {
+    background: rgba(59, 130, 246, 0.08);
+    border: 1px solid rgba(59, 130, 246, 0.2);
+}
+
+.suggestion-badge {
+    background: rgba(16, 185, 129, 0.08);
+    border: 1px solid rgba(16, 185, 129, 0.2);
+}
+
+.badge-title {
+    font-size: 0.85rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.value-badge .badge-title { color: #60a5fa; }
+.suggestion-badge .badge-title { color: #34d399; }
+
+.badge-content {
+    font-size: 0.85rem;
+    line-height: 1.4;
+    color: #e2e8f0;
+}
+
+.highlight-bet {
+    font-weight: 800;
+    font-size: 1.05rem !important;
+    color: #10b981 !important;
+    text-shadow: 0 0 10px rgba(16, 185, 129, 0.3);
+}
+
+/* Disclaimer & Footer */
+.modal-footer-info {
+    border-top: 1px solid var(--glass-border);
+    padding-top: 1rem;
+    margin-top: 1.5rem;
+}
+
+.responsibility-disclaimer {
+    font-size: 0.75rem;
+    color: #fbbf24;
+    opacity: 0.8;
+    line-height: 1.45;
+    font-style: italic;
+    text-align: center;
+}
+
+/* Spinner */
+.spinner {
+    width: 40px;
+    height: 40px;
+    border: 4px solid rgba(255, 255, 255, 0.1);
+    border-top-color: var(--primary-color);
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    margin: 0 auto 15px auto;
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}

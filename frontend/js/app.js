@@ -116,6 +116,11 @@ document.addEventListener('DOMContentLoaded', () => {
                         <span class="vs">VS</span>
                         <span>${match.team_b}</span>
                     </div>
+                    <div class="match-odds">
+                        <span class="odd-badge">L: <b>${match.odds_a.toFixed(2)}</b></span>
+                        <span class="odd-badge">E: <b>${match.odds_draw.toFixed(2)}</b></span>
+                        <span class="odd-badge">V: <b>${match.odds_b.toFixed(2)}</b></span>
+                    </div>
                     ${isPending ? `
                         <div class="bet-inputs">
                             <input type="number" id="score-a-${match.id}" class="score-input" min="0" max="15" value="0">
@@ -124,7 +129,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         </div>
                         <div class="card-actions">
                             <button class="btn primary-btn btn-sm" onclick="placeBet(${match.id})">Apostar</button>
-                            <button class="btn outline-btn btn-sm" onclick="askAI(${match.id}, '${match.team_a}', '${match.team_b}')">🌟 IA</button>
+                            <button class="btn outline-btn btn-sm" onclick="askAI(${match.id}, '${match.team_a}', '${match.team_b}')">🤖 Consultar IA</button>
                         </div>
                     ` : `
                         <div class="bet-inputs" style="font-weight: bold; font-size: 1.5rem;">
@@ -192,12 +197,58 @@ document.addEventListener('DOMContentLoaded', () => {
             aiLoader.classList.remove('hidden');
             aiResultBox.classList.add('hidden');
 
+            // Reset error or progress text inside loader
+            aiLoader.innerHTML = `
+                <div class="spinner"></div>
+                <p>Consultando a Gemini y procesando estadísticas multivariables...</p>
+            `;
+
             try {
                 const prediction = await api.getAIPrediction(matchId);
                 
+                // Set predicted score
                 document.getElementById('ai-score-a').textContent = prediction.predictedScoreA;
                 document.getElementById('ai-score-b').textContent = prediction.predictedScoreB;
-                document.getElementById('ai-reasoning').textContent = prediction.reasoning;
+                
+                // Set volatility
+                const volEl = document.getElementById('ai-volatility');
+                volEl.textContent = prediction.volatility;
+                volEl.className = 'volatility-pill'; // reset classes
+                if (prediction.volatility.toLowerCase().includes('alta')) {
+                    volEl.classList.add('vol-high');
+                } else if (prediction.volatility.toLowerCase().includes('media')) {
+                    volEl.classList.add('vol-medium');
+                } else {
+                    volEl.classList.add('vol-low');
+                }
+
+                // Set probabilities bars
+                const localBar = document.getElementById('prob-local');
+                const drawBar = document.getElementById('prob-draw');
+                const awayBar = document.getElementById('prob-away');
+
+                localBar.style.width = `${prediction.probabilities.local}%`;
+                localBar.querySelector('span').textContent = `L: ${prediction.probabilities.local}%`;
+                
+                drawBar.style.width = `${prediction.probabilities.draw}%`;
+                drawBar.querySelector('span').textContent = `E: ${prediction.probabilities.draw}%`;
+                
+                awayBar.style.width = `${prediction.probabilities.away}%`;
+                awayBar.querySelector('span').textContent = `V: ${prediction.probabilities.away}%`;
+
+                // Set multivariable breakdown
+                document.getElementById('ai-factor-form').textContent = prediction.keyFactors.form;
+                document.getElementById('ai-factor-absences').textContent = prediction.keyFactors.absences;
+                document.getElementById('ai-factor-h2h').textContent = prediction.keyFactors.h2h;
+                document.getElementById('ai-factor-home').textContent = prediction.keyFactors.homeAdvantage;
+                document.getElementById('ai-factor-motivation').textContent = prediction.keyFactors.motivation;
+
+                // Set value detected and suggested bet
+                document.getElementById('ai-value-text').textContent = prediction.valueDetected;
+                document.getElementById('ai-suggested-bet').textContent = prediction.suggestedBet;
+
+                // Set disclaimer
+                document.getElementById('ai-disclaimer').textContent = prediction.responsibilityDisclaimer;
                 
                 aiLoader.classList.add('hidden');
                 aiResultBox.classList.remove('hidden');
@@ -207,7 +258,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 document.getElementById(`score-b-${matchId}`).value = prediction.predictedScoreB;
 
             } catch (err) {
-                aiLoader.textContent = err.message;
+                aiLoader.innerHTML = `<p style="color: var(--danger)">Error: ${err.message}</p>`;
             }
         };
     }

@@ -106,3 +106,7 @@ dist
 # OS-specific files
 .DS_Store
 Thumbs.db
+
+# Custom exclusions
+.node-portable/
+database/*.db

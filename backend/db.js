@@ -1,14 +1,24 @@
-const mysql = require('mysql2/promise');
-require('dotenv').config();
+const { DatabaseSync } = require('node:sqlite');
+const path = require('path');
 
-const pool = mysql.createPool({
-    host: process.env.DB_HOST || '127.0.0.1',
-    user: process.env.DB_USER || 'root',
-    password: process.env.DB_PASSWORD || '',
-    database: process.env.DB_NAME || 'worldcup_betting',
-    waitForConnections: true,
-    connectionLimit: 10,
-    queueLimit: 0
-});
+const dbPath = path.join(__dirname, '../database/worldcup_betting.db');
+const db = new DatabaseSync(dbPath);
 
-module.exports = pool;
+module.exports = {
+    async execute(sql, params = []) {
+        try {
+            const isSelect = sql.trim().toLowerCase().startsWith('select');
+            const stmt = db.prepare(sql);
+            if (isSelect) {
+                const rows = stmt.all(...params);
+                return [rows, null];
+            } else {
+                const result = stmt.run(...params);
+                return [{ insertId: result.lastInsertRowid, affectedRows: result.changes }, null];
+            }
+        } catch (err) {
+            console.error('Database Error:', err);
+            throw err;
+        }
+    }
+};

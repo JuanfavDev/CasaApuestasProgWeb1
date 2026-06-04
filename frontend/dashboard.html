@@ -37,19 +37,99 @@
         </aside>
     </main>
 
-    <!-- Modal de Predicción IA -->
+    <!-- Modal de Predicción IA (Centro Analítico BetOracle AI) -->
     <div id="ai-modal" class="modal hidden">
-        <div class="modal-content glass-panel">
+        <div class="modal-content glass-panel modal-lg">
             <span class="close-btn" id="close-modal">&times;</span>
-            <h2>Predicción de la IA 🤖</h2>
-            <p id="ai-match-teams" class="match-highlight">Cargando...</p>
-            <div id="ai-result-box" class="ai-result-box hidden">
-                <div class="ai-score">
-                    <span id="ai-score-a">0</span> - <span id="ai-score-b">0</span>
-                </div>
-                <p id="ai-reasoning" class="ai-reasoning"></p>
+            <div class="modal-header-ai">
+                <span class="oracle-tag">AGENT ANALYTIC</span>
+                <h2>BetOracle AI Analytics 🤖</h2>
+                <p id="ai-match-teams" class="match-highlight">Cargando...</p>
             </div>
-            <div id="ai-loader" class="loader">Consultando a Gemini...</div>
+
+            <!-- Loader -->
+            <div id="ai-loader" class="loader">
+                <div class="spinner"></div>
+                <p>Consultando a Gemini y procesando estadísticas multivariables...</p>
+            </div>
+
+            <!-- Contenido del Análisis -->
+            <div id="ai-result-box" class="ai-result-box hidden">
+                
+                <!-- Score & Volatility -->
+                <div class="ai-score-block">
+                    <div class="score-side">
+                        <span class="score-label">Marcador Estimado</span>
+                        <div class="ai-score">
+                            <span id="ai-score-a">0</span> - <span id="ai-score-b">0</span>
+                        </div>
+                    </div>
+                    <div class="volatility-side">
+                        <span class="score-label">Riesgo / Volatilidad</span>
+                        <div id="ai-volatility" class="volatility-pill">Media</div>
+                    </div>
+                </div>
+
+                <!-- Probabilities bar -->
+                <div class="ai-prob-container">
+                    <h3 class="anal-title">Distribución de Probabilidad</h3>
+                    <div class="prob-bar-wrapper">
+                        <div id="prob-local" class="prob-bar-segment prob-local" style="width: 33%"><span>L: 33%</span></div>
+                        <div id="prob-draw" class="prob-bar-segment prob-draw" style="width: 33%"><span>E: 33%</span></div>
+                        <div id="prob-away" class="prob-bar-segment prob-away" style="width: 34%"><span>V: 34%</span></div>
+                    </div>
+                    <div class="prob-legends">
+                        <span class="legend-dot local-dot"></span> Local
+                        <span class="legend-dot draw-dot"></span> Empate
+                        <span class="legend-dot away-dot"></span> Visitante
+                    </div>
+                </div>
+
+                <!-- Multivariable Breakdown -->
+                <div class="multivariable-analysis">
+                    <h3 class="anal-title">Desglose de Factores Clave</h3>
+                    <div class="analysis-grid">
+                        <div class="analysis-item">
+                            <div class="item-header-factor"><span class="factor-icon">📈</span> Forma Reciente</div>
+                            <p id="ai-factor-form" class="factor-text">-</p>
+                        </div>
+                        <div class="analysis-item">
+                            <div class="item-header-factor"><span class="factor-icon">🚑</span> Bajas y Lesiones</div>
+                            <p id="ai-factor-absences" class="factor-text">-</p>
+                        </div>
+                        <div class="analysis-item">
+                            <div class="item-header-factor"><span class="factor-icon">⚔️</span> Historial Directo (H2H)</div>
+                            <p id="ai-factor-h2h" class="factor-text">-</p>
+                        </div>
+                        <div class="analysis-item">
+                            <div class="item-header-factor"><span class="factor-icon">🏟️</span> Ventaja Localía</div>
+                            <p id="ai-factor-home" class="factor-text">-</p>
+                        </div>
+                        <div class="analysis-item text-full-width">
+                            <div class="item-header-factor"><span class="factor-icon">🔥</span> Motivación y Contexto</div>
+                            <p id="ai-factor-motivation" class="factor-text">-</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Insights & Suggestions -->
+                <div class="prediction-insights">
+                    <div class="insight-badge value-badge">
+                        <div class="badge-title">⚖️ Valor Detectado</div>
+                        <p id="ai-value-text" class="badge-content">-</p>
+                    </div>
+                    <div class="insight-badge suggestion-badge">
+                        <div class="badge-title">🎯 Apuesta Sugerida</div>
+                        <p id="ai-suggested-bet" class="badge-content highlight-bet">-</p>
+                    </div>
+                </div>
+
+                <!-- Disclaimer -->
+                <div class="modal-footer-info">
+                    <p id="ai-disclaimer" class="responsibility-disclaimer"></p>
+                </div>
+
+            </div>
         </div>
     </div>
 
