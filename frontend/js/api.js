@@ -68,5 +68,34 @@ const api = {
         const data = await res.json();
         if (!res.ok) throw new Error(data.error || 'Error generating AI prediction');
         return data;
+    },
+
+    async getProfile() {
+        const res = await fetch(`${API_URL}/profile`, { headers: this.getHeaders() });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Error al obtener el perfil');
+        return data;
+    },
+
+    async chargeWallet(amount) {
+        const res = await fetch(`${API_URL}/wallet/charge`, {
+            method: 'POST',
+            headers: this.getHeaders(),
+            body: JSON.stringify({ amount })
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Error al recargar la billetera');
+        return data;
+    },
+
+    async sendChatMessage(message) {
+        const res = await fetch(`${API_URL}/chat`, {
+            method: 'POST',
+            headers: this.getHeaders(),
+            body: JSON.stringify({ message })
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Error en el chat');
+        return data;
     }
 };

@@ -11,30 +11,189 @@
     <div class="background-animation"></div>
     
     <nav class="navbar glass-panel">
-        <div class="nav-brand">🏆 Mundial 2026 Apuestas</div>
+        <div class="nav-brand-container">
+            <div class="nav-brand">🏆 Mundial 2026 Apuestas</div>
+            <div class="nav-menu">
+                <button class="nav-link active" data-target="view-matches">Partidos</button>
+                <button class="nav-link" data-target="view-profile">Mi Perfil</button>
+                <button class="nav-link" data-target="view-wallet">Cargar Billetera</button>
+                <button class="nav-link" data-target="view-chat">Asistente Chatbot</button>
+            </div>
+        </div>
         <div class="nav-user">
+            <div class="balance-container">
+                <span class="balance-label">Billetera:</span>
+                <span id="user-balance" class="balance-value">$0.00</span>
+            </div>
             <span id="user-greeting">Hola, Usuario</span>
             <button id="logout-btn" class="btn btn-sm outline-btn">Salir</button>
         </div>
     </nav>
 
-    <main class="dashboard-container">
-        <!-- Partidos -->
-        <section class="matches-section">
-            <h2 class="section-title">Próximos Partidos</h2>
-            <div id="matches-list" class="grid-container">
-                <!-- Los partidos se cargarán dinámicamente aquí -->
-                <div class="loader">Cargando partidos...</div>
-            </div>
-        </section>
+    <main class="main-content-wrapper">
+        <!-- Vista de Partidos y Apuestas (Inicio) -->
+        <div id="view-matches" class="dashboard-container tab-view active-view">
+            <!-- Partidos -->
+            <section class="matches-section">
+                <h2 class="section-title">Próximos Partidos</h2>
+                <div id="matches-list" class="grid-container">
+                    <!-- Los partidos se cargarán dinámicamente aquí -->
+                    <div class="loader">Cargando partidos...</div>
+                </div>
+            </section>
 
-        <!-- Sidebar (Mis Apuestas) -->
-        <aside class="bets-section glass-panel">
-            <h2 class="section-title">Mis Apuestas</h2>
-            <div id="my-bets-list" class="bets-list">
-                <!-- Apuestas del usuario aquí -->
+            <!-- Sidebar (Mis Apuestas) -->
+            <aside class="bets-section glass-panel">
+                <h2 class="section-title">Mis Apuestas</h2>
+                <div id="my-bets-list" class="bets-list">
+                    <!-- Apuestas del usuario aquí -->
+                </div>
+            </aside>
+        </div>
+
+        <!-- Vista de Perfil -->
+        <div id="view-profile" class="profile-section tab-view hidden">
+            <h2 class="section-title">Mi Perfil</h2>
+            <div class="profile-grid">
+                <div class="profile-card glass-panel text-center">
+                    <div class="avatar">👤</div>
+                    <h3 id="profile-username" class="profile-name">Cargando...</h3>
+                    <p class="profile-role">Usuario Registrado</p>
+                </div>
+                
+                <div class="stats-card glass-panel">
+                    <h3 class="stat-title">Estadísticas de Cuenta</h3>
+                    <div class="stats-grid">
+                        <div class="stat-item">
+                            <span class="stat-label">Saldo Disponible</span>
+                            <span id="profile-balance" class="stat-value">$0.00</span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-label">Total de Apuestas</span>
+                            <span id="profile-total-bets" class="stat-value">0</span>
+                        </div>
+                    </div>
+                </div>
             </div>
-        </aside>
+
+            <!-- Listado de apuestas completo -->
+            <div class="profile-bets-container glass-panel" style="margin-top: 2rem;">
+                <h3 class="stat-title">Historial Completo de Apuestas</h3>
+                <div id="profile-bets-list" class="profile-bets-list">
+                    <p style="color: var(--text-muted)">Cargando historial...</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Vista de Billetera Virtual -->
+        <div id="view-wallet" class="wallet-section tab-view hidden">
+            <h2 class="section-title">Cargar Billetera Virtual</h2>
+            <div class="wallet-container">
+                <div class="wallet-left glass-panel">
+                    <h3>Selecciona un Monto para Recargar</h3>
+                    <div class="amount-presets">
+                        <button class="preset-btn" data-amount="10">$10</button>
+                        <button class="preset-btn" data-amount="50">$50</button>
+                        <button class="preset-btn" data-amount="100">$100</button>
+                        <button class="preset-btn" data-amount="500">$500</button>
+                    </div>
+                    <div class="custom-amount-group">
+                        <label for="custom-amount">Otro Monto (USD)</label>
+                        <div class="input-with-symbol">
+                            <span class="currency-symbol">$</span>
+                            <input type="number" id="custom-amount" min="1" max="10000" placeholder="0.00">
+                        </div>
+                    </div>
+                    <button id="btn-confirm-amount" class="btn primary-btn btn-full">Continuar con el Pago</button>
+                </div>
+                
+                <div class="wallet-right glass-panel">
+                    <h3>Simulación de Pago Seguro</h3>
+                    
+                    <!-- Credit Card Mockup -->
+                    <div class="credit-card-mockup">
+                        <div class="card-brand">VISA</div>
+                        <div class="card-chip"></div>
+                        <div class="card-number">•••• •••• •••• ••••</div>
+                        <div class="card-details">
+                            <div class="card-holder">
+                                <span class="card-label">TITULAR</span>
+                                <span class="card-holder-name">NOMBRE COMPLETO</span>
+                            </div>
+                            <div class="card-expiry">
+                                <span class="card-label">EXP</span>
+                                <span class="card-expiry-val">MM/AA</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <form id="payment-form" class="payment-form">
+                        <div class="input-group">
+                            <label for="card-name">Nombre en la Tarjeta</label>
+                            <input type="text" id="card-name" required placeholder="Nombre como aparece en la tarjeta" disabled>
+                        </div>
+                        <div class="card-row">
+                            <div class="input-group" style="flex: 2;">
+                                <label for="card-num">Número de Tarjeta</label>
+                                <input type="text" id="card-num" required maxlength="19" placeholder="4000 1234 5678 9010" disabled>
+                            </div>
+                            <div class="input-group" style="flex: 1;">
+                                <label for="card-cvv">CVV</label>
+                                <input type="password" id="card-cvv" required maxlength="4" placeholder="***" disabled>
+                            </div>
+                        </div>
+                        <button type="submit" id="btn-pay" class="btn secondary-btn btn-full" disabled>Pagar y Acreditar Saldo</button>
+                        <p id="wallet-msg" class="form-msg" style="margin-top: 10px;"></p>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- Vista de Chatbot Asistente -->
+        <div id="view-chat" class="chat-section tab-view hidden">
+            <h2 class="section-title">Asistente de Apuestas Mundialista 🤖</h2>
+            <div class="chat-wrapper glass-panel">
+                <div class="chat-header">
+                    <div class="chat-agent-info">
+                        <span class="chat-agent-avatar">🤖</span>
+                        <div>
+                            <div class="chat-agent-name">Asistente Mundialista 2026</div>
+                            <div class="chat-agent-status"><span class="status-dot"></span> En línea (Analista Experto)</div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Chat Messages Box -->
+                <div id="chat-messages" class="chat-messages">
+                    <div class="chat-message bot">
+                        <div class="message-bubble">
+                            ¡Hola! Soy tu Asistente de Apuestas Mundialista 2026. Estoy aquí para ofrecerte análisis profundos, estadísticas, H2H, bajas y análisis de cuotas directamente desde nuestra base de datos.
+                            <br><br>
+                            Pregúntame sobre cualquier partido, por ejemplo:
+                            <ul>
+                                <li><i>"¿Quién llega mejor en México vs Alemania?"</i></li>
+                                <li><i>"Dame un análisis detallado de Argentina vs España"</i></li>
+                                <li><i>"¿Cuáles son las bajas de Brasil?"</i></li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Quick suggestions tags -->
+                <div class="chat-suggestions">
+                    <button class="suggest-btn" data-msg="¿Quién es el favorito para Canadá vs Brasil?">Análisis Canadá vs Brasil</button>
+                    <button class="suggest-btn" data-msg="¿Cuáles son las bajas de México vs Alemania?">Bajas México vs Alemania</button>
+                    <button class="suggest-btn" data-msg="Dame un pronóstico detallado de Argentina vs España">Pronóstico Argentina vs España</button>
+                    <button class="suggest-btn" data-msg="¿Cómo influye la localía en el EE. UU. vs Inglaterra?">Localía EE. UU. vs Inglaterra</button>
+                </div>
+
+                <!-- Chat Input area -->
+                <form id="chat-form" class="chat-input-area">
+                    <input type="text" id="chat-input" required placeholder="Escribe tu consulta sobre los partidos aquí..." autocomplete="off">
+                    <button type="submit" class="btn primary-btn btn-send">Enviar</button>
+                </form>
+            </div>
+        </div>
     </main>
 
     <!-- Modal de Predicción IA (Centro Analítico BetOracle AI) -->

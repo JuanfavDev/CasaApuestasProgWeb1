@@ -198,4 +198,163 @@ Debes devolver la respuesta estrictamente como un objeto JSON crudo, sin bloques
     }
 });
 
+// Get user profile (username, balance, total bets)
+router.get('/profile', async (req, res) => {
+    try {
+        const [users] = await db.execute('SELECT username, balance FROM users WHERE id = ?', [req.user.userId]);
+        if (users.length === 0) {
+            return res.status(404).json({ error: 'User not found' });
+        }
+        
+        const [betsCount] = await db.execute('SELECT COUNT(*) as count FROM bets WHERE user_id = ?', [req.user.userId]);
+        
+        res.json({
+            username: users[0].username,
+            balance: users[0].balance,
+            totalBets: betsCount[0].count
+        });
+    } catch (error) {
+        console.error('Error fetching profile:', error);
+        res.status(500).json({ error: 'Error fetching profile' });
+    }
+});
+
+// Charge virtual wallet
+router.post('/wallet/charge', async (req, res) => {
+    try {
+        const { amount } = req.body;
+        const depositAmount = parseFloat(amount);
+        
+        if (isNaN(depositAmount) || depositAmount <= 0) {
+            return res.status(400).json({ error: 'El monto de recarga debe ser un número positivo válido.' });
+        }
+        
+        // Get current balance
+        const [users] = await db.execute('SELECT balance FROM users WHERE id = ?', [req.user.userId]);
+        if (users.length === 0) {
+            return res.status(404).json({ error: 'User not found' });
+        }
+        
+        const newBalance = users[0].balance + depositAmount;
+        
+        // Update balance
+        await db.execute('UPDATE users SET balance = ? WHERE id = ?', [newBalance, req.user.userId]);
+        
+        res.json({ message: '¡Recarga exitosa!', balance: newBalance });
+    } catch (error) {
+        console.error('Error charging wallet:', error);
+        res.status(500).json({ error: 'Error charging wallet' });
+    }
+});
+
+// Chatbot for soccer analysis (Gemini)
+router.post('/chat', async (req, res) => {
+    try {
+        const { message } = req.body;
+        
+        if (!message) {
+            return res.status(400).json({ error: 'Message is required' });
+        }
+        
+        // Fetch all matches to provide as database context to the AI
+        const [matches] = await db.execute('SELECT * FROM matches');
+        
+        // Format matches context
+        let matchesContext = matches.map(m => {
+            return `- ${m.team_a} vs ${m.team_b} (${new Date(m.match_date).toLocaleString('es-ES')})
+  Estado: ${m.status === 'completed' ? `Finalizado (${m.score_a}-${m.score_b})` : 'Pendiente'}
+  Cuotas: Local ${m.odds_a}, Empate ${m.odds_draw}, Visitante ${m.odds_b}
+  Forma: ${m.team_a} [${m.recent_form_a}], ${m.team_b} [${m.recent_form_b}]
+  Bajas: ${m.team_a}: ${m.absences_a} | ${m.team_b}: ${m.absences_b}
+  Historial (H2H): ${m.h2h}
+  Localía: ${m.home_advantage}
+  Motivación: ${m.motivation}`;
+        }).join('\n\n');
+
+        const prompt = `Eres el "Asistente Mundialista 2026", un chatbot analítico de fútbol de élite y experto en apuestas deportivas. Tu meta es responder de forma profesional, profunda, analítica y amigable en español.
+        
+Aquí tienes la información oficial de la base de datos de los partidos del Mundial 2026:
+${matchesContext}
+
+El usuario te está haciendo una pregunta o interactuando contigo. Responde de forma muy completa y detallada, dando datos de forma, H2H y ausencias basados en el contexto proporcionado si te preguntan por un partido específico. Sé objetivo pero entretenido, y nunca garantices resultados 100% seguros (fomenta el juego responsable).
+
+Pregunta del usuario: "${message}"
+
+Responde en formato de texto enriquecido (Markdown estándar) con negritas, listas o tablas si es necesario. No uses encabezados h1 (#).`;
+
+        // If no Gemini key is provided, use mock analysis
+        if (!process.env.GEMINI_API_KEY || process.env.GEMINI_API_KEY === 'your_gemini_api_key_here' || process.env.GEMINI_API_KEY === 'dummy_key') {
+            // Generate standard mock chatbot response
+            let responseText = "¡Hola! Soy tu Asistente Mundialista 2026. ";
+            const lowercaseMsg = message.toLowerCase();
+            
+            // Check if matches specific teams
+            if (lowercaseMsg.includes('canad') || lowercaseMsg.includes('brasil')) {
+                responseText += `
+### Análisis del Partido: Canadá vs Brasil 🇨🇦 🇧🇷
+
+*   **Favoritismo**: **Brasil** es el favorito teórico (cuota **1.65**), pero enfrenta un reto duro en Toronto (cuota **5.50** para Canadá).
+*   **Forma y Clave**: Canadá tiene la ventaja de jugar en casa con un clima frío que puede incomodar a Brasil. Además, Brasil llega con bajas muy importantes, destacando a **Neymar Jr.** (ligamento cruzado) y **Gabriel Magalhães** (acumulación de tarjetas).
+*   **H2H**: Historial directo dominado por Brasil (2 victorias, 1 empate).
+*   **Recomendación**: Debido al factor localía y las ausencias brasileñas, la opción de **Ambos Equipos Anotan** o **Más de 2.5 Goles** tiene un valor muy atractivo.`;
+            } else if (lowercaseMsg.includes('mexic') || lowercaseMsg.includes('alemania')) {
+                responseText += `
+### Análisis del Partido: México vs Alemania 🇲🇽 🇩🇪
+
+*   **Favoritismo**: **Alemania** (cuota **2.05**) vs **México** (cuota **3.80**).
+*   **Condición del Azteca**: El partido se juega en el **Estadio Azteca**. La altitud de 2,240 metros y la humedad sofocante son factores determinantes que suelen asfixiar a los equipos europeos.
+*   **Bajas**: México tiene la duda de **Edson Álvarez** por molestias en el muslo. Alemania llega con bajas críticas: **Jamal Musiala** (baja muscular) y **Ter Stegen** (recuperación de espalda).
+*   **Pronóstico**: Un duelo de alta volatilidad. Un empate (cuota **3.40**) o **Doble Oportunidad: México o Empate** representa un valor sólido.`;
+            } else if (lowercaseMsg.includes('ee') || lowercaseMsg.includes('inglaterra') || lowercaseMsg.includes('usa')) {
+                responseText += `
+### Análisis del Partido: EE. UU. vs Inglaterra 🇺🇸 🏴󠁧󠁢󠁥󠁮󠁧󠁿
+
+*   **Favoritismo**: **Inglaterra** es favorita a cuota **1.95**, pero **EE. UU.** tiene cuota **4.10**.
+*   **Contexto Histórico**: Es un derbi transatlántico. Curiosamente, Inglaterra *nunca* ha vencido a EE. UU. en una Copa del Mundo (1 victoria de EE.UU. en 1950 y 1 empate en 2010).
+*   **Bajas**: EE. UU. no tiene a **Sergiño Dest**. Inglaterra tiene sancionado a **Jude Bellingham** y **Harry Kane** llega entre algodones.
+*   **Recomendación**: Inglaterra tiene una plantilla superior, pero la ausencia de Bellingham y la racha histórica favorecen un partido cerrado. Sugerimos la opción de **Menos de 2.5 goles** o **Doble Oportunidad: EE. UU. o Empate** para los más arriesgados.`;
+            } else if (lowercaseMsg.includes('argentina') || lowercaseMsg.includes('espa')) {
+                responseText += `
+### Análisis del Partido: Argentina vs España 🇦🇷 🇪🇸
+
+*   **Favoritismo**: **Argentina** (cuota **2.45**) parte con ligera ventaja sobre **España** (cuota **3.00**).
+*   **Factor Emocional**: Es el último mundial de **Lionel Messi**. La motivación del cuadro albiceleste es máxima en el Hard Rock Stadium de Miami, donde habrá una marea de afición argentina.
+*   **Bajas**: España no contará con su motor **Gavi** y **Pedri** está a media máquina. Argentina tiene la duda de **Enzo Fernández**.
+*   **Recomendación**: La victoria directa de **Argentina** ofrece un excelente valor debido a la cohesión del grupo y las bajas clave en el mediocampo de la selección española.`;
+            } else if (lowercaseMsg.includes('francia') || lowercaseMsg.includes('portugal')) {
+                responseText += `
+### Análisis del Partido: Francia vs Portugal 🇫🇷 🇵🇹
+
+*   **Favoritismo**: **Francia** (cuota **2.15**) vs **Portugal** (cuota **3.60**).
+*   **Figuras**: **Kylian Mbappé** jugará con máscara protectora de carbono tras su fractura nasal. En Portugal, **Cristiano Ronaldo** tiene molestias en el gemelo y podría iniciar en la banca.
+*   **Historial**: Máxima paridad histórica, con recuerdos de la final de la Euro 2016 ganada por Portugal.
+*   **Pronóstico**: Partido de ritmo táctico muy cerrado. La opción de **Menos de 2.5 goles** o **Doble Oportunidad: Francia o Empate** es la más aconsejable.`;
+            } else {
+                responseText += `
+Veo que quieres saber más sobre la Copa Mundial 2026. Puedo darte análisis en profundidad sobre cualquiera de los siguientes partidos:
+1. **Canadá vs Brasil** 🇨🇦 🇧🇷
+2. **México vs Alemania** 🇲🇽 🇩🇪
+3. **EE. UU. vs Inglaterra** 🇺🇸 🏴󠁧󠁢󠁥󠁮󠁧󠁿
+4. **Argentina vs España** 🇦🇷 🇪🇸
+5. **Francia vs Portugal** 🇫🇷 🇵🇹
+
+Por favor, pregúntame detalles de cualquiera de ellos (ej. *'¿Cuáles son las bajas de México vs Alemania?'* o *'¿Quién es el favorito en el Argentina vs España?'*).`;
+            }
+            
+            return res.json({ response: responseText });
+        }
+
+        // Call Gemini API
+        const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
+        const result = await model.generateContent(prompt);
+        const response = await result.response;
+        const responseText = response.text();
+        
+        res.json({ response: responseText });
+    } catch (error) {
+        console.error('Error in chatbot communication:', error);
+        res.status(500).json({ error: 'Error al comunicarse con el chatbot.' });
+    }
+});
+
 module.exports = router;

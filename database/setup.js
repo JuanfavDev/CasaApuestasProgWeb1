@@ -1,6 +1,7 @@
 const { DatabaseSync } = require('node:sqlite');
 const path = require('path');
 const fs = require('fs');
+const bcrypt = require('bcryptjs');
 
 const dbPath = path.join(__dirname, 'worldcup_betting.db');
 
@@ -18,9 +19,18 @@ db.exec(`
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         username TEXT NOT NULL UNIQUE,
         password_hash TEXT NOT NULL,
+        balance REAL DEFAULT 1000.0,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     );
 `);
+
+// Try to alter table to add balance column if it doesn't exist (for existing databases)
+try {
+    db.exec(`ALTER TABLE users ADD COLUMN balance REAL DEFAULT 1000.0;`);
+    console.log('Balance column added/verified in users table.');
+} catch (e) {
+    // If the column already exists, this will throw an error, which we ignore.
+}
 
 // Create Matches Table
 db.exec(`
@@ -60,6 +70,28 @@ db.exec(`
 `);
 
 console.log('Tables verified/created successfully.');
+
+// Check and seed users
+console.log('Checking and seeding users data...');
+const usersToSeed = [
+    { username: 'admin', password: 'admin123', balance: 5000.0 },
+    { username: 'juan', password: 'juan123', balance: 1500.0 },
+    { username: 'maria', password: 'maria123', balance: 2500.0 },
+    { username: 'beto', password: 'beto123', balance: 1000.0 }
+];
+
+const checkUserStmt = db.prepare('SELECT COUNT(*) as count FROM users WHERE username = ?');
+const insertUserStmt = db.prepare('INSERT INTO users (username, password_hash, balance) VALUES (?, ?, ?)');
+
+for (const u of usersToSeed) {
+    const res = checkUserStmt.get(u.username);
+    if (res.count === 0) {
+        const salt = bcrypt.genSaltSync(10);
+        const hash = bcrypt.hashSync(u.password, salt);
+        insertUserStmt.run(u.username, hash, u.balance);
+        console.log(`User seeded: ${u.username}`);
+    }
+}
 
 // Check if matches are already populated
 const countStmt = db.prepare('SELECT COUNT(*) as count FROM matches');

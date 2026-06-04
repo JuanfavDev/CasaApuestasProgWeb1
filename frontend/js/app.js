@@ -83,13 +83,17 @@ document.addEventListener('DOMContentLoaded', () => {
 
         async function loadDashboard() {
             try {
-                const [matches, bets] = await Promise.all([
+                const [matches, bets, profile] = await Promise.all([
                     api.getMatches(),
-                    api.getBets()
+                    api.getBets(),
+                    api.getProfile()
                 ]);
 
                 renderMatches(matches);
                 renderBets(bets);
+                
+                // Update balance in header navbar
+                document.getElementById('user-balance').textContent = `$${profile.balance.toFixed(2)}`;
             } catch (err) {
                 if (err.message === 'Unauthorized') {
                     localStorage.removeItem('jwt');
@@ -97,6 +101,320 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
                 console.error(err);
             }
+        }
+
+        // ---- SPA Navigation Logic ----
+        const navLinks = document.querySelectorAll('.nav-link');
+        const tabViews = document.querySelectorAll('.tab-view');
+
+        navLinks.forEach(link => {
+            link.addEventListener('click', (e) => {
+                const targetId = link.getAttribute('data-target');
+                
+                // Set active class on nav link
+                navLinks.forEach(l => l.classList.remove('active'));
+                link.classList.add('active');
+
+                // Switch views
+                tabViews.forEach(view => {
+                    if (view.id === targetId) {
+                        view.classList.remove('hidden');
+                        view.classList.add('active-view');
+                    } else {
+                        view.classList.add('hidden');
+                        view.classList.remove('active-view');
+                    }
+                });
+
+                // Load view specific data
+                if (targetId === 'view-profile') {
+                    loadProfileView();
+                } else if (targetId === 'view-wallet') {
+                    resetWalletView();
+                } else if (targetId === 'view-matches') {
+                    loadDashboard();
+                }
+            });
+        });
+
+        // ---- Profile View Logic ----
+        async function loadProfileView() {
+            try {
+                const profile = await api.getProfile();
+                const bets = await api.getBets();
+                
+                // Update text elements
+                document.getElementById('profile-username').textContent = profile.username;
+                document.getElementById('profile-balance').textContent = `$${profile.balance.toFixed(2)}`;
+                document.getElementById('profile-total-bets').textContent = profile.totalBets;
+                
+                // Update header balance too just in case
+                document.getElementById('user-balance').textContent = `$${profile.balance.toFixed(2)}`;
+                
+                // Render bets list in profile
+                const profileBetsList = document.getElementById('profile-bets-list');
+                if (bets.length === 0) {
+                    profileBetsList.innerHTML = '<p style="color: var(--text-muted)">No has realizado apuestas aún.</p>';
+                    return;
+                }
+                
+                profileBetsList.innerHTML = '';
+                bets.forEach(bet => {
+                    const isPending = bet.status === 'pending';
+                    const item = document.createElement('div');
+                    item.className = 'bet-item';
+                    item.style.borderLeft = isPending ? '4px solid var(--primary-color)' : '4px solid var(--secondary-color)';
+                    item.innerHTML = `
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px;">
+                            <span class="bet-item-header" style="margin-bottom: 0;">${bet.team_a} vs ${bet.team_b}</span>
+                            <span style="font-size: 0.75rem; color: var(--text-muted);">${new Date(bet.created_at).toLocaleString('es-ES')}</span>
+                        </div>
+                        <div class="bet-item-score">
+                            Tu predicción: <b>${bet.predicted_score_a} - ${bet.predicted_score_b}</b>
+                        </div>
+                        ${!isPending ? `
+                            <div class="bet-item-score" style="margin-top: 5px; color: ${bet.actual_score_a === bet.predicted_score_a && bet.actual_score_b === bet.predicted_score_b ? 'var(--secondary-color)' : 'var(--danger)'}">
+                                Resultado real: <b>${bet.actual_score_a} - ${bet.actual_score_b}</b> (${bet.actual_score_a === bet.predicted_score_a && bet.actual_score_b === bet.predicted_score_b ? 'Ganada' : 'No acertada'})
+                            </div>
+                        ` : `
+                            <div class="bet-item-score" style="margin-top: 5px; color: var(--secondary-color)">
+                                Estado: Pendiente de partido
+                            </div>
+                        `}
+                    `;
+                    profileBetsList.appendChild(item);
+                });
+            } catch (err) {
+                console.error('Error loading profile view:', err);
+            }
+        }
+
+        // ---- Wallet Logic ----
+        let selectedChargeAmount = 0;
+        const presetBtns = document.querySelectorAll('.preset-btn');
+        const customAmountInput = document.getElementById('custom-amount');
+        const confirmAmountBtn = document.getElementById('btn-confirm-amount');
+        const paymentForm = document.getElementById('payment-form');
+        const cardNameInput = document.getElementById('card-name');
+        const cardNumInput = document.getElementById('card-num');
+        const cardCvvInput = document.getElementById('card-cvv');
+        const payBtn = document.getElementById('btn-pay');
+        const walletMsg = document.getElementById('wallet-msg');
+
+        // Preset button clicks
+        presetBtns.forEach(btn => {
+            btn.addEventListener('click', () => {
+                presetBtns.forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                customAmountInput.value = '';
+                selectedChargeAmount = parseFloat(btn.getAttribute('data-amount'));
+                walletMsg.textContent = '';
+            });
+        });
+
+        // Custom amount input change
+        customAmountInput.addEventListener('input', () => {
+            presetBtns.forEach(b => b.classList.remove('active'));
+            selectedChargeAmount = parseFloat(customAmountInput.value) || 0;
+            walletMsg.textContent = '';
+        });
+
+        // Continue to payment form
+        confirmAmountBtn.addEventListener('click', () => {
+            if (selectedChargeAmount <= 0) {
+                walletMsg.textContent = 'Por favor, selecciona o ingresa un monto mayor a 0.';
+                walletMsg.className = 'form-msg msg-error';
+                return;
+            }
+            
+            walletMsg.textContent = `Monto de recarga seleccionado: $${selectedChargeAmount.toFixed(2)}. Complete los datos de la tarjeta.`;
+            walletMsg.className = 'form-msg msg-success';
+
+            // Enable card input fields
+            cardNameInput.disabled = false;
+            cardNumInput.disabled = false;
+            cardCvvInput.disabled = false;
+            payBtn.disabled = false;
+            
+            // Set dynamic pay button label
+            payBtn.textContent = `Pagar y Cargar $${selectedChargeAmount.toFixed(2)}`;
+        });
+
+        // Card mockup interactive binding
+        cardNameInput.addEventListener('input', (e) => {
+            const val = e.target.value;
+            document.querySelector('.card-holder-name').textContent = val.trim() || 'NOMBRE COMPLETO';
+        });
+
+        cardNumInput.addEventListener('input', (e) => {
+            // Format input: 4000 1234 5678 9010
+            let val = e.target.value.replace(/\s+/g, '').replace(/[^0-9]/gi, '');
+            let matches = val.match(/\d{4,16}/g);
+            let match = matches && matches[0] || '';
+            let parts = [];
+
+            for (let i=0, len=match.length; i<len; i+=4) {
+                parts.push(match.substring(i, i+4));
+            }
+
+            if (parts.length > 0) {
+                e.target.value = parts.join(' ');
+                document.querySelector('.card-number').textContent = parts.join(' ');
+            } else {
+                e.target.value = val;
+                document.querySelector('.card-number').textContent = val || '•••• •••• •••• ••••';
+            }
+        });
+
+        paymentForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            if (selectedChargeAmount <= 0) return;
+            
+            payBtn.disabled = true;
+            payBtn.textContent = 'Procesando pago seguro...';
+            
+            try {
+                // Call API to charge wallet
+                const response = await api.chargeWallet(selectedChargeAmount);
+                
+                // Update UI balance
+                document.getElementById('user-balance').textContent = `$${response.balance.toFixed(2)}`;
+                
+                walletMsg.textContent = `¡Transacción exitosa! Se han acreditado $${selectedChargeAmount.toFixed(2)} a tu cuenta.`;
+                walletMsg.className = 'form-msg msg-success';
+                
+                // Confetti/success animation simulation
+                document.querySelector('.credit-card-mockup').style.boxShadow = '0 0 30px rgba(16, 185, 129, 0.6)';
+                setTimeout(() => {
+                    document.querySelector('.credit-card-mockup').style.boxShadow = '';
+                }, 1500);
+
+                // Reset forms
+                setTimeout(() => {
+                    resetWalletView();
+                    // Go to matches view
+                    document.querySelector('[data-target="view-matches"]').click();
+                }, 2000);
+
+            } catch (err) {
+                walletMsg.textContent = err.message;
+                walletMsg.className = 'form-msg msg-error';
+                payBtn.disabled = false;
+                payBtn.textContent = `Pagar y Cargar $${selectedChargeAmount.toFixed(2)}`;
+            }
+        });
+
+        function resetWalletView() {
+            selectedChargeAmount = 0;
+            presetBtns.forEach(b => b.classList.remove('active'));
+            customAmountInput.value = '';
+            
+            cardNameInput.value = '';
+            cardNameInput.disabled = true;
+            
+            cardNumInput.value = '';
+            cardNumInput.disabled = true;
+            
+            cardCvvInput.value = '';
+            cardCvvInput.disabled = true;
+            
+            payBtn.disabled = true;
+            payBtn.textContent = 'Pagar y Acreditar Saldo';
+            
+            document.querySelector('.card-holder-name').textContent = 'NOMBRE COMPLETO';
+            document.querySelector('.card-number').textContent = '•••• •••• •••• ••••';
+            
+            walletMsg.textContent = '';
+        }
+
+        // ---- Chatbot Logic ----
+        const chatForm = document.getElementById('chat-form');
+        const chatInput = document.getElementById('chat-input');
+        const chatMessages = document.getElementById('chat-messages');
+        const suggestBtns = document.querySelectorAll('.suggest-btn');
+
+        // Handle quick suggestions click
+        suggestBtns.forEach(btn => {
+            btn.addEventListener('click', () => {
+                const msg = btn.getAttribute('data-msg');
+                chatInput.value = msg;
+                chatForm.dispatchEvent(new Event('submit'));
+            });
+        });
+
+        chatForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const message = chatInput.value.trim();
+            if (!message) return;
+
+            // Append user message
+            appendChatMessage(message, 'user');
+            chatInput.value = '';
+
+            // Append typing indicator
+            const typingIndicator = appendTypingIndicator();
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+
+            try {
+                // Call API
+                const result = await api.sendChatMessage(message);
+                
+                // Remove typing indicator
+                typingIndicator.remove();
+                
+                // Append bot response
+                appendChatMessage(result.response, 'bot');
+            } catch (err) {
+                typingIndicator.remove();
+                appendChatMessage(`Disculpa, ha ocurrido un error al procesar tu solicitud: ${err.message}`, 'bot');
+            }
+            
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+        });
+
+        function appendChatMessage(text, sender) {
+            const msgDiv = document.createElement('div');
+            msgDiv.className = `chat-message ${sender}`;
+            
+            const bubble = document.createElement('div');
+            bubble.className = 'message-bubble';
+            
+            if (sender === 'bot') {
+                // Basic markdown parsing for bold text, headers, lists and newlines
+                let html = text
+                    .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+                    .replace(/\*(.*?)\*/g, '<i>$1</i>')
+                    .replace(/### (.*?)\n/g, '<h3>$1</h3>')
+                    .replace(/\n\* (.*?)/g, '<li>$1</li>')
+                    .replace(/(<li>.*?<\/li>)/gs, '<ul>$1</ul>')
+                    .replace(/\n/g, '<br>');
+                bubble.innerHTML = html;
+            } else {
+                bubble.textContent = text;
+            }
+            
+            msgDiv.appendChild(bubble);
+            chatMessages.appendChild(msgDiv);
+        }
+
+        function appendTypingIndicator() {
+            const msgDiv = document.createElement('div');
+            msgDiv.className = 'chat-message bot';
+            
+            const bubble = document.createElement('div');
+            bubble.className = 'message-bubble';
+            bubble.innerHTML = `
+                <div class="typing-indicator">
+                    <span class="typing-dot"></span>
+                    <span class="typing-dot"></span>
+                    <span class="typing-dot"></span>
+                </div>
+            `;
+            
+            msgDiv.appendChild(bubble);
+            chatMessages.appendChild(msgDiv);
+            return msgDiv;
         }
 
         function renderMatches(matches) {
