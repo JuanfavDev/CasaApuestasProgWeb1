@@ -8,12 +8,24 @@
     "dev": "node --watch backend/server.js"
   },
   "dependencies": {
-    "@google/generative-ai": "latest",
+    "@google/generative-ai": "^0.24.1",
     "bcryptjs": "^2.4.3",
     "cors": "^2.8.5",
-    "dotenv": "^16.4.5",
+    "dotenv": "^16.6.1",
     "express": "^4.19.2",
     "jsonwebtoken": "^9.0.2",
     "mysql2": "^3.9.7"
-  }
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/JuanfavDev/CasaApuestasProgWeb1.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/JuanfavDev/CasaApuestasProgWeb1/issues"
+  },
+  "homepage": "https://github.com/JuanfavDev/CasaApuestasProgWeb1#readme"
 }

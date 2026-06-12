@@ -93,7 +93,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 renderBets(bets);
                 
                 // Update balance in header navbar
-                document.getElementById('user-balance').textContent = `$${profile.balance.toFixed(2)}`;
+                document.getElementById('user-balance').textContent = `$${parseFloat(profile.balance).toFixed(2)}`;
             } catch (err) {
                 if (err.message === 'Unauthorized') {
                     localStorage.removeItem('jwt');
@@ -145,11 +145,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 
                 // Update text elements
                 document.getElementById('profile-username').textContent = profile.username;
-                document.getElementById('profile-balance').textContent = `$${profile.balance.toFixed(2)}`;
+                document.getElementById('profile-balance').textContent = `$${parseFloat(profile.balance).toFixed(2)}`;
                 document.getElementById('profile-total-bets').textContent = profile.totalBets;
                 
                 // Update header balance too just in case
-                document.getElementById('user-balance').textContent = `$${profile.balance.toFixed(2)}`;
+                document.getElementById('user-balance').textContent = `$${parseFloat(profile.balance).toFixed(2)}`;
                 
                 // Render bets list in profile
                 const profileBetsList = document.getElementById('profile-bets-list');
@@ -279,9 +279,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 const response = await api.chargeWallet(selectedChargeAmount);
                 
                 // Update UI balance
-                document.getElementById('user-balance').textContent = `$${response.balance.toFixed(2)}`;
+                document.getElementById('user-balance').textContent = `$${parseFloat(response.balance).toFixed(2)}`;
                 
-                walletMsg.textContent = `¡Transacción exitosa! Se han acreditado $${selectedChargeAmount.toFixed(2)} a tu cuenta.`;
+                walletMsg.textContent = `¡Transacción exitosa! Se han acreditado $${parseFloat(selectedChargeAmount).toFixed(2)} a tu cuenta.`;
                 walletMsg.className = 'form-msg msg-success';
                 
                 // Confetti/success animation simulation
@@ -301,7 +301,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 walletMsg.textContent = err.message;
                 walletMsg.className = 'form-msg msg-error';
                 payBtn.disabled = false;
-                payBtn.textContent = `Pagar y Cargar $${selectedChargeAmount.toFixed(2)}`;
+                payBtn.textContent = `Pagar y Cargar $${parseFloat(selectedChargeAmount).toFixed(2)}`;
             }
         });
 
@@ -419,25 +419,37 @@ document.addEventListener('DOMContentLoaded', () => {
 
         function renderMatches(matches) {
             matchesList.innerHTML = '';
+            if (!matches || matches.length === 0) {
+                matchesList.innerHTML = '<p style="color:var(--text-muted);padding:1rem">No hay partidos disponibles.</p>';
+                return;
+            }
             matches.forEach(match => {
                 const isPending = match.status === 'pending';
-                
                 const card = document.createElement('div');
                 card.className = 'match-card glass-panel';
+
+                // Crest images (flags)
+                const homeCrest = match.crest_a
+                    ? `<img class="team-crest" src="${match.crest_a}" alt="" onerror="this.style.display='none'">`
+                    : '';
+                const awayCrest = match.crest_b
+                    ? `<img class="team-crest" src="${match.crest_b}" alt="" onerror="this.style.display='none'">`
+                    : '';
+
                 card.innerHTML = `
                     <div class="match-header">
                         <span>${new Date(match.match_date).toLocaleString('es-ES', {month: 'short', day: 'numeric', hour: '2-digit', minute:'2-digit'})}</span>
-                        <span style="color: ${isPending ? 'var(--secondary-color)' : 'var(--text-muted)'}">${isPending ? 'Pendiente' : 'Finalizado'}</span>
+                        <span class="status-pill ${isPending ? 'status-sched' : 'status-fin'}">${isPending ? 'Pendiente' : '✔ Finalizado'}</span>
                     </div>
                     <div class="match-teams">
-                        <span>${match.team_a}</span>
+                        <span>${homeCrest}${match.team_a}</span>
                         <span class="vs">VS</span>
-                        <span>${match.team_b}</span>
+                        <span>${awayCrest}${match.team_b}</span>
                     </div>
                     <div class="match-odds">
-                        <span class="odd-badge">L: <b>${match.odds_a.toFixed(2)}</b></span>
-                        <span class="odd-badge">E: <b>${match.odds_draw.toFixed(2)}</b></span>
-                        <span class="odd-badge">V: <b>${match.odds_b.toFixed(2)}</b></span>
+                        <span class="odd-badge">L: <b>${parseFloat(match.odds_a).toFixed(2)}</b></span>
+                        <span class="odd-badge">E: <b>${parseFloat(match.odds_draw).toFixed(2)}</b></span>
+                        <span class="odd-badge">V: <b>${parseFloat(match.odds_b).toFixed(2)}</b></span>
                     </div>
                     ${isPending ? `
                         <div class="bet-inputs">
@@ -447,10 +459,10 @@ document.addEventListener('DOMContentLoaded', () => {
                         </div>
                         <div class="card-actions">
                             <button class="btn primary-btn btn-sm" onclick="placeBet(${match.id})">Apostar</button>
-                            <button class="btn outline-btn btn-sm" onclick="askAI(${match.id}, '${match.team_a}', '${match.team_b}')">🤖 Consultar IA</button>
+                            <button class="btn outline-btn btn-sm" onclick="askAI(${match.id}, '${match.team_a.replace(/'/g, "\\'")}', '${match.team_b.replace(/'/g, "\\'")}')">🤖 Consultar IA</button>
                         </div>
                     ` : `
-                        <div class="bet-inputs" style="font-weight: bold; font-size: 1.5rem;">
+                        <div class="bet-inputs" style="font-weight: bold; font-size: 1.5rem; text-align: center; justify-content: center; width: 100%;">
                             ${match.score_a} - ${match.score_b}
                         </div>
                     `}

@@ -1,24 +1,18 @@
-const { DatabaseSync } = require('node:sqlite');
-const path = require('path');
+/**
+ * db.js — Conexión a MySQL usando mysql2 con pool de conexiones.
+ * Lee las credenciales EXCLUSIVAMENTE desde variables de entorno (.env).
+ */
+const mysql = require('mysql2/promise');
 
-const dbPath = path.join(__dirname, '../database/worldcup_betting.db');
-const db = new DatabaseSync(dbPath);
+const pool = mysql.createPool({
+    host:     process.env.DB_HOST     || '127.0.0.1',
+    port:     process.env.DB_PORT     || 3306,
+    user:     process.env.DB_USER     || 'root',
+    password: process.env.DB_PASSWORD || '',
+    database: process.env.DB_NAME     || 'worldcup_betting',
+    waitForConnections: true,
+    connectionLimit: 10,
+    queueLimit: 0
+});
 
-module.exports = {
-    async execute(sql, params = []) {
-        try {
-            const isSelect = sql.trim().toLowerCase().startsWith('select');
-            const stmt = db.prepare(sql);
-            if (isSelect) {
-                const rows = stmt.all(...params);
-                return [rows, null];
-            } else {
-                const result = stmt.run(...params);
-                return [{ insertId: result.lastInsertRowid, affectedRows: result.changes }, null];
-            }
-        } catch (err) {
-            console.error('Database Error:', err);
-            throw err;
-        }
-    }
-};
+module.exports = pool;

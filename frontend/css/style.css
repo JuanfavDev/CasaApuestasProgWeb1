@@ -1350,3 +1350,158 @@ body {
     0%, 80%, 100% { transform: scale(0.6); opacity: 0.4; }
     40% { transform: scale(1); opacity: 1; }
 }
+
+/* ==========================================================================
+   Live Matches Toggle & Badges
+   ========================================================================== */
+
+.section-header-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 1.5rem;
+    flex-wrap: wrap;
+    gap: 1rem;
+}
+
+.live-controls {
+    display: flex;
+    align-items: center;
+    gap: 0.8rem;
+    flex-wrap: wrap;
+}
+
+/* Source badge */
+.source-badge {
+    font-size: 0.75rem;
+    font-weight: 700;
+    padding: 4px 10px;
+    border-radius: 20px;
+    letter-spacing: 0.5px;
+    transition: all 0.4s ease;
+}
+
+.badge-local {
+    background: rgba(100, 116, 139, 0.15);
+    border: 1px solid rgba(100, 116, 139, 0.3);
+    color: #94a3b8;
+}
+
+.badge-live {
+    background: rgba(239, 68, 68, 0.15);
+    border: 1px solid rgba(239, 68, 68, 0.4);
+    color: #f87171;
+    animation: livePulse 2s infinite ease-in-out;
+}
+
+.badge-fallback {
+    background: rgba(245, 158, 11, 0.15);
+    border: 1px solid rgba(245, 158, 11, 0.3);
+    color: #fbbf24;
+}
+
+@keyframes livePulse {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
+    50% { box-shadow: 0 0 8px 3px rgba(239, 68, 68, 0.25); }
+}
+
+/* Toggle switch */
+.live-toggle-label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+    user-select: none;
+}
+
+.live-toggle-input {
+    display: none;
+}
+
+.live-toggle-track {
+    width: 42px;
+    height: 22px;
+    background: rgba(255,255,255,0.1);
+    border: 1px solid rgba(255,255,255,0.15);
+    border-radius: 11px;
+    position: relative;
+    transition: background 0.3s ease;
+}
+
+.live-toggle-input:checked + .live-toggle-track {
+    background: rgba(239, 68, 68, 0.5);
+    border-color: rgba(239, 68, 68, 0.5);
+}
+
+.live-toggle-thumb {
+    position: absolute;
+    top: 2px;
+    left: 2px;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: white;
+    transition: transform 0.3s ease;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.3);
+}
+
+.live-toggle-input:checked ~ .live-toggle-thumb,
+.live-toggle-input:checked + .live-toggle-track .live-toggle-thumb {
+    transform: translateX(20px);
+}
+
+.live-toggle-text {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--text-muted);
+    transition: color 0.3s;
+}
+
+.live-toggle-input:checked ~ .live-toggle-text {
+    color: #f87171;
+}
+
+/* Countdown */
+.refresh-countdown {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    background: rgba(255,255,255,0.05);
+    border: 1px solid rgba(255,255,255,0.08);
+    padding: 3px 9px;
+    border-radius: 20px;
+}
+
+/* Team crests in live mode */
+.team-crest {
+    width: 24px;
+    height: 24px;
+    object-fit: contain;
+    vertical-align: middle;
+    margin-right: 5px;
+}
+
+/* Live score display */
+.live-score {
+    font-size: 1.6rem;
+    font-weight: 800;
+    color: #f87171;
+    text-align: center;
+    letter-spacing: 2px;
+    padding: 4px 0;
+    animation: livePulse 2s infinite;
+}
+
+.status-pill {
+    display: inline-block;
+    font-size: 0.7rem;
+    font-weight: 700;
+    padding: 2px 8px;
+    border-radius: 20px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.status-live    { background: rgba(239,68,68,0.2);   color: #f87171; border: 1px solid rgba(239,68,68,0.4); animation: livePulse 1.5s infinite; }
+.status-fin     { background: rgba(100,116,139,0.2); color: #94a3b8; border: 1px solid rgba(100,116,139,0.3); }
+.status-sched   { background: rgba(59,130,246,0.15); color: #60a5fa; border: 1px solid rgba(59,130,246,0.3); }
+.status-paused  { background: rgba(245,158,11,0.15); color: #fbbf24; border: 1px solid rgba(245,158,11,0.3); }

@@ -97,5 +97,12 @@ const api = {
         const data = await res.json();
         if (!res.ok) throw new Error(data.error || 'Error en el chat');
         return data;
+    },
+
+    async getLiveMatches() {
+        const res = await fetch(`${API_URL}/live-matches`, { headers: this.getHeaders() });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Error al obtener partidos en vivo');
+        return data; // { source: 'live'|'local'|'local_fallback', matches: [...], cached: bool }
     }
 };
