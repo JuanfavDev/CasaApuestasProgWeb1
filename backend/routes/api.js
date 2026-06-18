@@ -12,21 +12,39 @@ const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || 'dummy_key');
 const CACHE_TTL_MS = 60 * 1000; // 60 segundos
 let liveMatchesCache = { data: null, timestamp: 0 };
 
-// Database Migration: Ensure matches table has crest_a and crest_b columns
-async function ensureCrestColumns() {
+// Database Migration: Run schema migrations dynamically on startup
+async function runMigrations() {
     try {
-        const [columns] = await db.execute("SHOW COLUMNS FROM matches LIKE 'crest_a'");
-        if (columns.length === 0) {
+        // Migration 1: crest_a and crest_b on matches
+        const [crestColumns] = await db.execute("SHOW COLUMNS FROM matches LIKE 'crest_a'");
+        if (crestColumns.length === 0) {
             console.log('[DB Migration] Adding crest_a and crest_b columns to matches table...');
             await db.execute("ALTER TABLE matches ADD COLUMN crest_a VARCHAR(255) DEFAULT NULL");
             await db.execute("ALTER TABLE matches ADD COLUMN crest_b VARCHAR(255) DEFAULT NULL");
-            console.log('[DB Migration] Columns added successfully.');
         }
+
+        // Migration 2: group_name on matches
+        const [groupCol] = await db.execute("SHOW COLUMNS FROM matches LIKE 'group_name'");
+        if (groupCol.length === 0) {
+            console.log('[DB Migration] Adding group_name column to matches table...');
+            await db.execute("ALTER TABLE matches ADD COLUMN group_name VARCHAR(50) DEFAULT NULL");
+        }
+
+        // Migration 3: amount, status, reward on bets
+        const [amountCol] = await db.execute("SHOW COLUMNS FROM bets LIKE 'amount'");
+        if (amountCol.length === 0) {
+            console.log('[DB Migration] Adding amount, status, and reward columns to bets table...');
+            await db.execute("ALTER TABLE bets ADD COLUMN amount DECIMAL(10,2) DEFAULT 100.00");
+            await db.execute("ALTER TABLE bets ADD COLUMN status ENUM('pending', 'won', 'lost') DEFAULT 'pending'");
+            await db.execute("ALTER TABLE bets ADD COLUMN reward DECIMAL(10,2) DEFAULT 0.00");
+        }
+        
+        console.log('[DB Migration] All migrations checked and verified.');
     } catch (err) {
-        console.error('[DB Migration Error] Failed to alter matches table:', err.message);
+        console.error('[DB Migration Error] Failed to run migrations:', err.message);
     }
 }
-ensureCrestColumns();
+runMigrations();
 
 // Helper to generate deterministic odds and match metadata based on team names
 function getDeterministicMetadata(teamA, teamB) {
@@ -77,12 +95,66 @@ const verifyToken = (req, res, next) => {
         req.user = verified;
         next();
     } catch (error) {
-        res.status(400).json({ error: 'Invalid token' });
+        res.status(401).json({ error: 'Invalid token' });
     }
 };
 
 // Apply middleware to all routes below
 router.use(verifyToken);
+
+let oddsSyncCacheTimestamp = 0;
+const ODDS_CACHE_TTL_MS = 12 * 60 * 60 * 1000; // 12 horas
+
+async function syncRealOdds() {
+    const ODDS_API_KEY = process.env.THE_ODDS_API_KEY;
+    if (!ODDS_API_KEY) {
+        console.log('[Odds Sync] No key for The Odds API configured. Fallback to deterministic odds.');
+        return;
+    }
+    try {
+        console.log('[Odds Sync] Contacting The Odds API for World Cup odds...');
+        const response = await fetch(`https://api.the-odds-api.com/v4/sports/soccer_fifa_world_cup/odds/?apiKey=${ODDS_API_KEY}&regions=us&markets=h2h&oddsFormat=decimal`);
+        if (!response.ok) throw new Error(`Odds API responded with ${response.status}`);
+        
+        const oddsList = await response.json();
+        console.log(`[Odds Sync] Received odds for ${oddsList.length} matches.`);
+        
+        for (const odd of oddsList) {
+            const home = odd.home_team;
+            const away = odd.away_team;
+            const bookmaker = odd.bookmakers?.[0];
+            const market = bookmaker?.markets?.find(m => m.key === 'h2h');
+            if (!market) continue;
+            
+            const homeOutcome = market.outcomes.find(o => o.name === home);
+            const awayOutcome = market.outcomes.find(o => o.name === away);
+            const drawOutcome = market.outcomes.find(o => o.name === 'Draw');
+            
+            if (!homeOutcome || !awayOutcome || !drawOutcome) continue;
+            
+            const updateQuery = `
+                UPDATE matches 
+                SET odds_a = ?, odds_b = ?, odds_draw = ? 
+                WHERE (LOWER(team_a) LIKE ? AND LOWER(team_b) LIKE ?) 
+                   OR (LOWER(team_a) LIKE ? AND LOWER(team_b) LIKE ?)
+            `;
+            
+            const hTerm = `%${home.toLowerCase().trim()}%`;
+            const aTerm = `%${away.toLowerCase().trim()}%`;
+            
+            await db.execute(updateQuery, [
+                homeOutcome.price,
+                awayOutcome.price,
+                drawOutcome.price,
+                hTerm, aTerm,
+                aTerm, hTerm
+            ]);
+        }
+        console.log('[Odds Sync] Real odds database updates finished successfully.');
+    } catch (err) {
+        console.error('[Odds Sync Error] Odds update failed:', err.message);
+    }
+}
 
 // Get all matches (with real matches syncing if API key is active)
 router.get('/matches', async (req, res) => {
@@ -121,6 +193,9 @@ router.get('/matches', async (req, res) => {
 
         // Sync matches to the database
         for (const m of matchesList) {
+            if (!m.homeTeam || !m.homeTeam.name || !m.awayTeam || !m.awayTeam.name) {
+                continue; // Skip knockout/undecided matches to prevent null pointer exceptions
+            }
             const homeName = m.homeTeam.name;
             const awayName = m.awayTeam.name;
             const matchDate = m.utcDate.replace('T', ' ').substring(0, 19);
@@ -130,6 +205,7 @@ router.get('/matches', async (req, res) => {
             const scoreB = m.score.fullTime.away;
             const crestA = m.homeTeam.crest || null;
             const crestB = m.awayTeam.crest || null;
+            const groupName = m.group || (m.stage === 'GROUP_STAGE' ? 'Grupo Desconocido' : m.stage);
 
             // Generate deterministic odds and metadata for new inserts
             const meta = getDeterministicMetadata(homeName, awayName);
@@ -140,15 +216,16 @@ router.get('/matches', async (req, res) => {
                     id, team_a, team_b, match_date, status, score_a, score_b,
                     odds_a, odds_draw, odds_b, recent_form_a, recent_form_b,
                     absences_a, absences_b, h2h, home_advantage, motivation,
-                    crest_a, crest_b
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    crest_a, crest_b, group_name
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 ON DUPLICATE KEY UPDATE
                     status = VALUES(status),
                     score_a = VALUES(score_a),
                     score_b = VALUES(score_b),
                     match_date = VALUES(match_date),
                     crest_a = VALUES(crest_a),
-                    crest_b = VALUES(crest_b)
+                    crest_b = VALUES(crest_b),
+                    group_name = VALUES(group_name)
             `;
 
             await db.execute(syncQuery, [
@@ -157,8 +234,14 @@ router.get('/matches', async (req, res) => {
                 meta.recent_form_a, meta.recent_form_b,
                 meta.absences_a, meta.absences_b,
                 meta.h2h, meta.home_advantage, meta.motivation,
-                crestA, crestB
+                crestA, crestB, groupName
             ]);
+        }
+
+        // Trigger real odds sync asynchronously if cache expired
+        if (now - oddsSyncCacheTimestamp > ODDS_CACHE_TTL_MS) {
+            syncRealOdds().catch(err => console.error('Background odds sync failed:', err));
+            oddsSyncCacheTimestamp = now;
         }
 
         // Fetch matches from the database (filtering out mock seeded matches with IDs 1 to 5 to avoid mixing)
@@ -178,33 +261,54 @@ router.get('/matches', async (req, res) => {
     }
 });
 
-// Place a bet
+// Place a bet with amount and balance checks
 router.post('/bets', async (req, res) => {
     try {
-        const { matchId, scoreA, scoreB } = req.body;
+        const { matchId, scoreA, scoreB, amount } = req.body;
         
-        if (!matchId || scoreA === undefined || scoreB === undefined) {
-            return res.status(400).json({ error: 'Missing required fields' });
+        if (!matchId || scoreA === undefined || scoreB === undefined || amount === undefined) {
+            return res.status(400).json({ error: 'Faltan campos obligatorios' });
         }
+
+        const betAmount = parseFloat(amount);
+        if (isNaN(betAmount) || betAmount <= 0) {
+            return res.status(400).json({ error: 'El monto de la apuesta debe ser un número positivo' });
+        }
+
+        // Check user balance
+        const [users] = await db.execute('SELECT balance FROM users WHERE id = ?', [req.user.userId]);
+        if (users.length === 0) {
+            return res.status(404).json({ error: 'Usuario no encontrado' });
+        }
+        
+        const userBalance = parseFloat(users[0].balance);
+        if (userBalance < betAmount) {
+            return res.status(400).json({ error: 'Saldo insuficiente para realizar esta apuesta' });
+        }
+
+        // Deduct balance
+        const newBalance = userBalance - betAmount;
+        await db.execute('UPDATE users SET balance = ? WHERE id = ?', [newBalance, req.user.userId]);
 
         // Insert bet
         await db.execute(
-            'INSERT INTO bets (user_id, match_id, predicted_score_a, predicted_score_b) VALUES (?, ?, ?, ?)',
-            [req.user.userId, matchId, scoreA, scoreB]
+            'INSERT INTO bets (user_id, match_id, predicted_score_a, predicted_score_b, amount, status, reward) VALUES (?, ?, ?, ?, ?, ?, ?)',
+            [req.user.userId, matchId, scoreA, scoreB, betAmount, 'pending', 0.00]
         );
 
-        res.status(201).json({ message: 'Bet placed successfully!' });
+        res.status(201).json({ message: '¡Apuesta registrada con éxito!', balance: newBalance });
     } catch (error) {
         console.error('Error placing bet:', error);
-        res.status(500).json({ error: 'Error placing bet' });
+        res.status(500).json({ error: 'Error al registrar la apuesta' });
     }
 });
 
-// Get user bets
+// Get user bets with metadata
 router.get('/bets', async (req, res) => {
     try {
         const query = `
-            SELECT b.*, m.team_a, m.team_b, m.status, m.score_a as actual_score_a, m.score_b as actual_score_b
+            SELECT b.id, b.user_id, b.match_id, b.predicted_score_a, b.predicted_score_b, b.amount, b.status, b.reward, b.created_at,
+                   m.team_a, m.team_b, m.status as match_status, m.score_a as actual_score_a, m.score_b as actual_score_b, m.group_name
             FROM bets b
             JOIN matches m ON b.match_id = m.id
             WHERE b.user_id = ?

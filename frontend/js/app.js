@@ -70,6 +70,42 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
+        // Global Chart instances
+        let successChartInstance = null;
+        let groupChartInstance = null;
+        let profitChartInstance = null;
+
+        // Toast Notification System
+        function showToast(message, type = 'info') {
+            const container = document.getElementById('toast-container');
+            if (!container) return;
+
+            const toast = document.createElement('div');
+            toast.className = `toast-item toast-${type}`;
+            toast.innerHTML = `
+                <div class="toast-content">${message}</div>
+                <div class="toast-close">&times;</div>
+            `;
+            container.appendChild(toast);
+
+            const timer = setTimeout(() => removeToast(toast), 4500);
+            toast.querySelector('.toast-close').addEventListener('click', () => {
+                clearTimeout(timer);
+                removeToast(toast);
+            });
+        }
+
+        function removeToast(toast) {
+            toast.style.transform = 'translateX(120%)';
+            toast.style.opacity = '0';
+            setTimeout(() => toast.remove(), 300);
+        }
+        // Protect route
+        if (!localStorage.getItem('jwt')) {
+            window.location.href = 'index.html';
+            return;
+        }
+
         document.getElementById('user-greeting').textContent = `Hola, ${localStorage.getItem('username')}`;
 
         // Logout
@@ -163,27 +199,171 @@ document.addEventListener('DOMContentLoaded', () => {
                     const isPending = bet.status === 'pending';
                     const item = document.createElement('div');
                     item.className = 'bet-item';
-                    item.style.borderLeft = isPending ? '4px solid var(--primary-color)' : '4px solid var(--secondary-color)';
+                    item.style.borderLeft = isPending ? '4px solid var(--primary-color)' : (bet.status === 'won' ? '4px solid var(--secondary-color)' : '4px solid var(--danger)');
                     item.innerHTML = `
                         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px;">
                             <span class="bet-item-header" style="margin-bottom: 0;">${bet.team_a} vs ${bet.team_b}</span>
                             <span style="font-size: 0.75rem; color: var(--text-muted);">${new Date(bet.created_at).toLocaleString('es-ES')}</span>
                         </div>
                         <div class="bet-item-score">
-                            Tu predicción: <b>${bet.predicted_score_a} - ${bet.predicted_score_b}</b>
+                            Tu predicción: <b>${bet.predicted_score_a} - ${bet.predicted_score_b}</b> (Monto: $${parseFloat(bet.amount).toFixed(2)})
                         </div>
                         ${!isPending ? `
-                            <div class="bet-item-score" style="margin-top: 5px; color: ${bet.actual_score_a === bet.predicted_score_a && bet.actual_score_b === bet.predicted_score_b ? 'var(--secondary-color)' : 'var(--danger)'}">
-                                Resultado real: <b>${bet.actual_score_a} - ${bet.actual_score_b}</b> (${bet.actual_score_a === bet.predicted_score_a && bet.actual_score_b === bet.predicted_score_b ? 'Ganada' : 'No acertada'})
+                            <div class="bet-item-score" style="margin-top: 5px; color: ${bet.status === 'won' ? 'var(--secondary-color)' : 'var(--danger)'}">
+                                Resultado real: <b>${bet.actual_score_a} - ${bet.actual_score_b}</b> (${bet.status === 'won' ? `Ganada +$${parseFloat(bet.reward).toFixed(2)}` : 'No acertada'})
                             </div>
                         ` : `
-                            <div class="bet-item-score" style="margin-top: 5px; color: var(--secondary-color)">
+                            <div class="bet-item-score" style="margin-top: 5px; color: var(--primary-color)">
                                 Estado: Pendiente de partido
                             </div>
                         `}
                     `;
                     profileBetsList.appendChild(item);
                 });
+
+                // --- Calcular Estadísticas ---
+                let wonCount = 0;
+                let lostCount = 0;
+                let pendingCount = 0;
+                let groupStats = {};
+                let profitTimeline = [];
+                
+                const chronologicalBets = [...bets].reverse();
+                let cumulativeProfit = 0;
+                
+                chronologicalBets.forEach(bet => {
+                    const isWon = bet.status === 'won';
+                    const isLost = bet.status === 'lost';
+                    const isPending = bet.status === 'pending';
+                    
+                    if (isWon) {
+                        wonCount++;
+                        cumulativeProfit += (parseFloat(bet.reward) - parseFloat(bet.amount));
+                    } else if (isLost) {
+                        lostCount++;
+                        cumulativeProfit -= parseFloat(bet.amount);
+                    } else {
+                        pendingCount++;
+                    }
+                    
+                    if (!isPending) {
+                        profitTimeline.push({
+                            date: new Date(bet.created_at).toLocaleDateString('es-ES', {month: 'short', day: 'numeric'}),
+                            profit: cumulativeProfit
+                        });
+                    }
+                    
+                    if (isWon && bet.group_name) {
+                        let grp = bet.group_name;
+                        if (grp.startsWith('GROUP_')) {
+                            grp = 'Grupo ' + grp.split('_')[1];
+                        }
+                        groupStats[grp] = (groupStats[grp] || 0) + 1;
+                    }
+                });
+
+                // Destruir gráficos anteriores para evitar fugas y errores de lienzo
+                if (successChartInstance) successChartInstance.destroy();
+                if (groupChartInstance) groupChartInstance.destroy();
+                if (profitChartInstance) profitChartInstance.destroy();
+
+                // 1. Doughnut Chart (Tasa de Éxito)
+                const ctxSuccess = document.getElementById('successRateChart').getContext('2d');
+                successChartInstance = new Chart(ctxSuccess, {
+                    type: 'doughnut',
+                    data: {
+                        labels: ['Ganadas', 'Perdidas', 'Pendientes'],
+                        datasets: [{
+                            data: [wonCount, lostCount, pendingCount],
+                            backgroundColor: ['#10b981', '#ef4444', '#3b82f6'],
+                            borderWidth: 1,
+                            borderColor: 'rgba(255, 255, 255, 0.1)'
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: {
+                                position: 'bottom',
+                                labels: { color: '#f8fafc', font: { family: 'Inter', size: 11 } }
+                            }
+                        }
+                    }
+                });
+
+                // 2. Bar Chart (Rendimiento por Grupo)
+                const groupLabels = Object.keys(groupStats);
+                const groupValues = Object.values(groupStats);
+                const ctxGroup = document.getElementById('groupPerformanceChart').getContext('2d');
+                groupChartInstance = new Chart(ctxGroup, {
+                    type: 'bar',
+                    data: {
+                        labels: groupLabels.length > 0 ? groupLabels : ['Sin victorias'],
+                        datasets: [{
+                            label: 'Apuestas Acertadas',
+                            data: groupValues.length > 0 ? groupValues : [0],
+                            backgroundColor: '#10b981',
+                            borderRadius: 6
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: { display: false }
+                        },
+                        scales: {
+                            y: {
+                                ticks: { color: '#94a3b8', stepSize: 1 },
+                                grid: { color: 'rgba(255, 255, 255, 0.05)' }
+                            },
+                            x: {
+                                ticks: { color: '#94a3b8' },
+                                grid: { display: false }
+                            }
+                        }
+                    }
+                });
+
+                // 3. Line Chart (Ganancia acumulada)
+                const timelineLabels = profitTimeline.map(pt => pt.date);
+                const timelineValues = profitTimeline.map(pt => pt.profit);
+                const ctxProfit = document.getElementById('profitTimelineChart').getContext('2d');
+                profitChartInstance = new Chart(ctxProfit, {
+                    type: 'line',
+                    data: {
+                        labels: timelineLabels.length > 0 ? timelineLabels : ['Inicio'],
+                        datasets: [{
+                            label: 'Beneficio Neto ($)',
+                            data: timelineValues.length > 0 ? timelineValues : [0],
+                            borderColor: '#3b82f6',
+                            backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                            fill: true,
+                            tension: 0.3,
+                            pointBackgroundColor: '#10b981',
+                            pointRadius: 4
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: { display: false }
+                        },
+                        scales: {
+                            y: {
+                                ticks: { color: '#94a3b8' },
+                                grid: { color: 'rgba(255, 255, 255, 0.05)' }
+                            },
+                            x: {
+                                ticks: { color: '#94a3b8' },
+                                grid: { display: false }
+                            }
+                        }
+                    }
+                });
+
             } catch (err) {
                 console.error('Error loading profile view:', err);
             }
@@ -457,6 +637,12 @@ document.addEventListener('DOMContentLoaded', () => {
                             <span>-</span>
                             <input type="number" id="score-b-${match.id}" class="score-input" min="0" max="15" value="0">
                         </div>
+                        <div style="display: flex; justify-content: center; margin-top: 8px;">
+                            <div class="bet-amount-wrapper">
+                                <span class="bet-amount-label">Monto: $</span>
+                                <input type="number" id="amount-${match.id}" class="bet-amount-input" min="1" max="10000" value="100">
+                            </div>
+                        </div>
                         <div class="card-actions">
                             <button class="btn primary-btn btn-sm" onclick="placeBet(${match.id})">Apostar</button>
                             <button class="btn outline-btn btn-sm" onclick="askAI(${match.id}, '${match.team_a.replace(/'/g, "\\'")}', '${match.team_b.replace(/'/g, "\\'")}')">🤖 Consultar IA</button>
@@ -483,32 +669,55 @@ document.addEventListener('DOMContentLoaded', () => {
                 const isPending = bet.status === 'pending';
                 const el = document.createElement('div');
                 el.className = 'bet-item';
+                el.style.borderLeft = isPending ? '4px solid var(--primary-color)' : (bet.status === 'won' ? '4px solid var(--secondary-color)' : '4px solid var(--danger)');
                 el.innerHTML = `
                     <div class="bet-item-header">${bet.team_a} vs ${bet.team_b}</div>
                     <div class="bet-item-score">
-                        Tu predicción: ${bet.predicted_score_a} - ${bet.predicted_score_b}
+                        Predicción: <b>${bet.predicted_score_a} - ${bet.predicted_score_b}</b> (Monto: $${parseFloat(bet.amount).toFixed(2)})
                     </div>
                     ${!isPending ? `
-                        <div class="bet-item-score" style="margin-top: 5px; color: ${bet.actual_score_a === bet.predicted_score_a && bet.actual_score_b === bet.predicted_score_b ? 'var(--secondary-color)' : 'var(--danger)'}">
-                            Resultado real: ${bet.actual_score_a} - ${bet.actual_score_b}
+                        <div class="bet-item-score" style="margin-top: 5px; color: ${bet.status === 'won' ? 'var(--secondary-color)' : 'var(--danger)'}">
+                            Resultado: <b>${bet.actual_score_a} - ${bet.actual_score_b}</b> (${bet.status === 'won' ? `Ganada +$${parseFloat(bet.reward).toFixed(2)}` : 'No acertada'})
                         </div>
-                    ` : ''}
+                    ` : `
+                        <div class="bet-item-score" style="margin-top: 5px; color: var(--primary-color)">
+                            Estado: Pendiente
+                        </div>
+                    `}
                 `;
                 betsList.appendChild(el);
             });
         }
 
-        // Global functions for inline onclick handlers
+        // Global functions for inline onclick handlers with amounts
         window.placeBet = async function(matchId) {
             const scoreA = document.getElementById(`score-a-${matchId}`).value;
             const scoreB = document.getElementById(`score-b-${matchId}`).value;
+            const amountInput = document.getElementById(`amount-${matchId}`);
+            const amount = amountInput ? amountInput.value : 100;
+            
+            const betAmount = parseFloat(amount);
+            if (isNaN(betAmount) || betAmount <= 0) {
+                showToast('Por favor, ingresa un monto válido mayor a 0.', 'error');
+                return;
+            }
             
             try {
-                await api.placeBet(matchId, parseInt(scoreA), parseInt(scoreB));
-                alert('¡Apuesta registrada con éxito!');
-                loadDashboard(); // reload to show new bet
+                const response = await api.placeBet(matchId, parseInt(scoreA), parseInt(scoreB), betAmount);
+                
+                // Lanzar animación de Confeti
+                if (typeof confetti === 'function') {
+                    confetti({
+                        particleCount: 120,
+                        spread: 70,
+                        origin: { y: 0.7 }
+                    });
+                }
+                
+                showToast('¡Apuesta registrada con éxito!', 'success');
+                loadDashboard(); // Recargar datos
             } catch (err) {
-                alert(err.message);
+                showToast(err.message, 'error');
             }
         };
 

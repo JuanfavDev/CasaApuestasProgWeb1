@@ -78,6 +78,31 @@
                 </div>
             </div>
 
+            <!-- Contenedor de Gráficos Estadísticos -->
+            <div class="charts-section glass-panel" style="margin-top: 2rem;">
+                <h3 class="stat-title" style="border-bottom: 1px solid var(--glass-border); padding-bottom: 0.5rem; margin-bottom: 1.5rem;">Análisis de Rendimiento</h3>
+                <div class="charts-grid">
+                    <div class="chart-card-wrapper">
+                        <h4>Tasa de Éxito</h4>
+                        <div class="chart-container">
+                            <canvas id="successRateChart"></canvas>
+                        </div>
+                    </div>
+                    <div class="chart-card-wrapper">
+                        <h4>Rendimiento por Grupo</h4>
+                        <div class="chart-container">
+                            <canvas id="groupPerformanceChart"></canvas>
+                        </div>
+                    </div>
+                    <div class="chart-card-wrapper full-width-chart">
+                        <h4>Ganancias / Pérdidas Acumuladas (USD)</h4>
+                        <div class="chart-container-line">
+                            <canvas id="profitTimelineChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
             <!-- Listado de apuestas completo -->
             <div class="profile-bets-container glass-panel" style="margin-top: 2rem;">
                 <h3 class="stat-title">Historial Completo de Apuestas</h3>
@@ -293,6 +318,13 @@
             </div>
         </div>
     </div>
+
+    <!-- CDNs de librerías visuales -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.3/dist/confetti.browser.min.js"></script>
+
+    <!-- Contenedor para notificaciones Toast flotantes -->
+    <div id="toast-container" class="toast-container"></div>
 
     <script src="js/api.js"></script>
     <script src="js/app.js"></script>

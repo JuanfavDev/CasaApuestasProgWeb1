@@ -10,6 +10,22 @@ const api = {
         };
     },
 
+    // Centralized fetch helper for authenticated requests
+    async authenticatedFetch(url, options = {}) {
+        const headers = {
+            ...this.getHeaders(),
+            ...options.headers
+        };
+        const res = await fetch(url, { ...options, headers });
+        if (res.status === 401) {
+            localStorage.removeItem('jwt');
+            localStorage.removeItem('username');
+            window.location.href = 'index.html';
+            throw new Error('Unauthorized');
+        }
+        return res;
+    },
+
     async register(username, password) {
         const res = await fetch(`${API_URL}/auth/register`, {
             method: 'POST',
@@ -35,25 +51,21 @@ const api = {
     },
 
     async getMatches() {
-        const res = await fetch(`${API_URL}/matches`, { headers: this.getHeaders() });
-        if (!res.ok) {
-            if (res.status === 401) throw new Error('Unauthorized');
-            throw new Error('Error fetching matches');
-        }
+        const res = await this.authenticatedFetch(`${API_URL}/matches`);
+        if (!res.ok) throw new Error('Error fetching matches');
         return res.json();
     },
 
     async getBets() {
-        const res = await fetch(`${API_URL}/bets`, { headers: this.getHeaders() });
+        const res = await this.authenticatedFetch(`${API_URL}/bets`);
         if (!res.ok) throw new Error('Error fetching bets');
         return res.json();
     },
 
-    async placeBet(matchId, scoreA, scoreB) {
-        const res = await fetch(`${API_URL}/bets`, {
+    async placeBet(matchId, scoreA, scoreB, amount) {
+        const res = await this.authenticatedFetch(`${API_URL}/bets`, {
             method: 'POST',
-            headers: this.getHeaders(),
-            body: JSON.stringify({ matchId, scoreA, scoreB })
+            body: JSON.stringify({ matchId, scoreA, scoreB, amount })
         });
         const data = await res.json();
         if (!res.ok) throw new Error(data.error || 'Error placing bet');
@@ -61,9 +73,8 @@ const api = {
     },
 
     async getAIPrediction(matchId) {
-        const res = await fetch(`${API_URL}/predict/${matchId}`, {
-            method: 'POST',
-            headers: this.getHeaders()
+        const res = await this.authenticatedFetch(`${API_URL}/predict/${matchId}`, {
+            method: 'POST'
         });
         const data = await res.json();
         if (!res.ok) throw new Error(data.error || 'Error generating AI prediction');
@@ -71,16 +82,15 @@ const api = {
     },
 
     async getProfile() {
-        const res = await fetch(`${API_URL}/profile`, { headers: this.getHeaders() });
+        const res = await this.authenticatedFetch(`${API_URL}/profile`);
         const data = await res.json();
         if (!res.ok) throw new Error(data.error || 'Error al obtener el perfil');
         return data;
     },
 
     async chargeWallet(amount) {
-        const res = await fetch(`${API_URL}/wallet/charge`, {
+        const res = await this.authenticatedFetch(`${API_URL}/wallet/charge`, {
             method: 'POST',
-            headers: this.getHeaders(),
             body: JSON.stringify({ amount })
         });
         const data = await res.json();
@@ -89,9 +99,8 @@ const api = {
     },
 
     async sendChatMessage(message) {
-        const res = await fetch(`${API_URL}/chat`, {
+        const res = await this.authenticatedFetch(`${API_URL}/chat`, {
             method: 'POST',
-            headers: this.getHeaders(),
             body: JSON.stringify({ message })
         });
         const data = await res.json();
@@ -100,9 +109,9 @@ const api = {
     },
 
     async getLiveMatches() {
-        const res = await fetch(`${API_URL}/live-matches`, { headers: this.getHeaders() });
+        const res = await this.authenticatedFetch(`${API_URL}/live-matches`);
         const data = await res.json();
         if (!res.ok) throw new Error(data.error || 'Error al obtener partidos en vivo');
-        return data; // { source: 'live'|'local'|'local_fallback', matches: [...], cached: bool }
+        return data;
     }
 };
